@@ -30,6 +30,23 @@
 namespace image {
 
 template <typename T>
+uint32_t linearToRGB_11_11_10(const T& linear) {
+    float r = linear[0];
+    float g = linear[1];
+    float b = linear[2];
+    r = std::min(65024.0f, std::max(0.0f, r));  // 5 exp, 6 mantissa
+    g = std::min(65024.0f, std::max(0.0f, g));  // 5 exp, 6 mantissa
+    b = std::min(64512.0f, std::max(0.0f, b));  // 5 exp, 5 mantissa
+    // TODO: implement me
+
+    //std::ex
+    uint32_t ir = 0;
+    uint32_t ig = 0;
+    uint32_t ib = 0;
+    return (ir<<21) | (ig<<10) | ib;
+}
+
+template <typename T>
 inline filament::math::float4 linearToRGBM(const T& linear) {
     using filament::math::float4;
 
@@ -205,6 +222,25 @@ std::unique_ptr<uint8_t[]> fromLinearToRGBM(const LinearImage& image) {
             for (size_t i = 0; i < 4; i++) {
                 d[i] = T(l[i]);
             }
+        }
+    }
+    return dst;
+}
+
+// Creates a 3-channel RGB_11_11_10 image from a f32 image.
+// The source image can have three or more channels, but only the first three are honored.
+std::unique_ptr<uint32_t[]> fromLinearToRGB_11_11_10(const LinearImage& image) {
+    using namespace filament::math;
+    size_t w = image.getWidth();
+    size_t h = image.getHeight();
+    UTILS_UNUSED_IN_RELEASE size_t channels = image.getChannels();
+    assert(channels >= 3);
+    std::unique_ptr<uint32_t[]> dst(new uint32_t[w * h]);
+    uint32_t* d = dst.get();
+    for (size_t y = 0; y < h; ++y) {
+        for (size_t x = 0; x < w; ++x, d++) {
+            auto src = image.get<float3>((uint32_t) x, (uint32_t) y);
+            *d = linearToRGB_11_11_10(*src);
         }
     }
     return dst;

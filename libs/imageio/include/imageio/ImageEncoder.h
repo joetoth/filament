@@ -40,6 +40,7 @@ public:
                     // Default: 16 bit
         DDS_LINEAR, // 8-bit, 16-bit or 32-bit linear RGB, 1, 2 or 3 channels
                     // Default: 16 bit
+        RGB_11_11_10,
     };
 
     // Consumes linear floating-point data, returns false if unable to encode.

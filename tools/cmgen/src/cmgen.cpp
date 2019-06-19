@@ -148,9 +148,9 @@ static void printUsage(char* name) {
             "       Quiet mode. Suppress all non-error output\n\n"
             "   --type=[cubemap|equirect|octahedron|ktx], -t [cubemap|equirect|octahedron|ktx]\n"
             "       Specify output type (default: cubemap)\n\n"
-            "   --format=[exr|hdr|psd|rgbm|png|dds|ktx], -f [exr|hdr|psd|rgbm|png|dds|ktx]\n"
+            "   --format=[exr|hdr|psd|rgbm|rgb111110|png|dds|ktx], -f [exr|hdr|psd|rgbm|rgb111110|png|dds|ktx]\n"
             "       Specify output file format. ktx implies -type=ktx.\n"
-            "       KTX files are always encoded with 4-channel RGBM data\n\n"
+            "       KTX files are always encoded with 3-channel RGB_11_11_10 data\n\n"
             "   --compression=COMPRESSION, -c COMPRESSION\n"
             "       Format specific compression:\n"
             "           KTX:\n"
@@ -184,7 +184,7 @@ static void printUsage(char* name) {
             "       Generate irradiance SH for shader code\n\n"
             "\n"
             "Private use only:\n"
-            "   --ibl-dfg=filename.[exr|hdr|psd|png|rgbm|dds|h|hpp|c|cpp|inc|txt]\n"
+            "   --ibl-dfg=filename.[exr|hdr|psd|png|rgbm|rgb111110|dds|h|hpp|c|cpp|inc|txt]\n"
             "       Compute the IBL DFG LUT\n\n"
             "   --ibl-dfg-multiscatter\n"
             "       If --ibl-dfg is set, computes the DFG for multi-scattering GGX\n\n"
@@ -196,7 +196,7 @@ static void printUsage(char* name) {
             "       Diffuse irradiance into <dir>\n\n"
             "   --sh=bands\n"
             "       SH decomposition of input cubemap\n\n"
-            "   --sh-output=filename.[exr|hdr|psd|rgbm|png|dds|txt]\n"
+            "   --sh-output=filename.[exr|hdr|psd|rgbm|rgb111110|png|dds|txt]\n"
             "       SH output format. The filename extension determines the output format\n\n"
             "   --sh-irradiance, -i\n"
             "       Irradiance SH coefficients\n\n"
@@ -294,6 +294,10 @@ static int handleCommandLineArgments(int argc, char* argv[]) {
                 }
                 if (arg == "rgbm") {
                     g_format = ImageEncoder::Format::RGBM;
+                    format_specified = true;
+                }
+                if (arg == "rgb111110") {
+                    g_format = ImageEncoder::Format::RGB_11_11_10;
                     format_specified = true;
                 }
                 if (arg == "exr") {
@@ -410,7 +414,7 @@ static int handleCommandLineArgments(int argc, char* argv[]) {
     }
 
     if (g_deploy && !format_specified) {
-        g_format = ImageEncoder::Format::RGBM;
+        g_format = ImageEncoder::Format::RGB_11_11_10;
     }
 
     if (num_sh_bands && g_sh_compute) {
@@ -1160,13 +1164,13 @@ static void exportKtxFaces(KtxBundle& container, uint32_t miplevel, const Cubema
         LinearImage image = toLinearImage(cm.getImageForFace(face));
 
         if (compression.type != CompressionConfig::INVALID) {
-            CompressedTexture tex = compressTexture(compression, fromLinearToRGBM(image));
+            CompressedTexture tex = compressTexture(compression, image);
             container.setBlob(blobIndex, tex.data.get(), tex.size);
             info.glInternalFormat = (uint32_t) tex.format;
             continue;
         }
 
-        auto uintData = fromLinearToRGBM<uint8_t>(image);
+        auto uintData = fromLinearToRGB_11_11_10<uint8_t>(image);
         container.setBlob(blobIndex, uintData.get(), dim * dim * 4);
     }
 }
